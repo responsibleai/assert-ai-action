@@ -28,7 +28,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 onboard = io.open(ROOT / "ONBOARD.md", encoding="utf-8").read()
 
-SELF_REPO = "changliu2/assert-ai-action"
+SELF_REPO = "responsibleai/assert-ai-action"
 UPSTREAM_REPO = "responsibleai/ASSERT"
 
 RAW_ANY = r"https://raw\.githubusercontent\.com/([^/]+/[^/]+)/([^/]+)/(\S+?)(?=[\s`)]|$)"

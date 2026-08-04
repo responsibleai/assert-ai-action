@@ -58,7 +58,7 @@ def check_workflow_snippets(valid: set[str]) -> None:
             [text] if path.suffix in {".yml", ".yaml"} else pattern.findall(text)
         )
         for i, block in enumerate(blocks):
-            if "changliu2/assert-ai-action" not in block:
+            if "responsibleai/assert-ai-action" not in block:
                 continue
             # GitHub expressions are not valid YAML scalars in every position;
             # neutralise them before parsing.
@@ -70,7 +70,7 @@ def check_workflow_snippets(valid: set[str]) -> None:
                 continue
             for step in _walk_steps(doc):
                 uses = str(step.get("uses", ""))
-                if "changliu2/assert-ai-action" not in uses:
+                if "responsibleai/assert-ai-action" not in uses:
                     continue
                 if not re.search(r"@v\d", uses):
                     fail(f"{path.name} block {i}: action is not pinned to a major tag: {uses}")

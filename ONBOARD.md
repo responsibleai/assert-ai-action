@@ -13,7 +13,7 @@ They cover 40+ agents and detect the host automatically:
 
 ```bash
 npx skills add responsibleai/ASSERT --skill run-assert-eval --yes
-npx skills add changliu2/assert-ai-action --skill wire-assert-ci --yes
+npx skills add responsibleai/assert-ai-action --skill wire-assert-ci --yes
 ```
 
 Run them as two separate commands. `skills add` accepts only one package per
@@ -24,13 +24,13 @@ combined command looks like it worked and leaves you with half the bundle.
 assistant and fetch the matching files by hand. Note the two different hosts:
 
 - Claude Code:
-  - `https://raw.githubusercontent.com/changliu2/assert-ai-action/main/skills/wire-assert-ci/SKILL.md` -> `.claude/skills/wire-assert-ci/SKILL.md`
+  - `https://raw.githubusercontent.com/responsibleai/assert-ai-action/main/skills/wire-assert-ci/SKILL.md` -> `.claude/skills/wire-assert-ci/SKILL.md`
   - `https://raw.githubusercontent.com/responsibleai/ASSERT/main/.claude/skills/run-assert-eval/SKILL.md` -> `.claude/skills/run-assert-eval/SKILL.md`
 - GitHub Copilot CLI:
-  - `https://raw.githubusercontent.com/changliu2/assert-ai-action/main/skills/wire-assert-ci/wire-assert-ci.prompt.md` -> `.github/prompts/wire-assert-ci.prompt.md`
+  - `https://raw.githubusercontent.com/responsibleai/assert-ai-action/main/skills/wire-assert-ci/wire-assert-ci.prompt.md` -> `.github/prompts/wire-assert-ci.prompt.md`
   - `https://raw.githubusercontent.com/responsibleai/ASSERT/main/.github/prompts/run-assert-eval.prompt.md` -> `.github/prompts/run-assert-eval.prompt.md`
 - Cursor:
-  - `https://raw.githubusercontent.com/changliu2/assert-ai-action/main/skills/wire-assert-ci/assert-ci.mdc` -> `.cursor/rules/assert-ci.mdc`
+  - `https://raw.githubusercontent.com/responsibleai/assert-ai-action/main/skills/wire-assert-ci/assert-ci.mdc` -> `.cursor/rules/assert-ci.mdc`
   - `https://raw.githubusercontent.com/responsibleai/ASSERT/main/.cursor/rules/assert.mdc` -> `.cursor/rules/assert.mdc`
 
 Create parent directories if missing. Do not overwrite unrelated local files without showing the diff first.

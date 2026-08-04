@@ -17,5 +17,5 @@ python scripts/check_onboard_urls.py
 
 - Keep the action customer-safe: do not commit secrets, `.env` files, generated artifacts, traces, logs, or provider outputs.
 - Update `README.md`, `ONBOARD.md`, or `docs/` when changing inputs, outputs, gate semantics, or onboarding behavior.
-- Keep workflow snippets pinned to a major version such as `actions/checkout@v4` or `changliu2/assert-ai-action@v1`.
+- Keep workflow snippets pinned to a major version such as `actions/checkout@v4` or `responsibleai/assert-ai-action@v1`.
 - Run the helper tests above before requesting review.

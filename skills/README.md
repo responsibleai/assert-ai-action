@@ -29,7 +29,7 @@ Installing the bundle therefore takes **two commands, one per source repo**:
 
 ```bash
 npx skills add responsibleai/ASSERT --skill run-assert-eval --yes
-npx skills add changliu2/assert-ai-action --skill wire-assert-ci --yes
+npx skills add responsibleai/assert-ai-action --skill wire-assert-ci --yes
 ```
 
 `skills add` takes one package per invocation and silently ignores extras while still

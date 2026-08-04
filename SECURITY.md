@@ -8,7 +8,7 @@ Do not include secrets, provider keys, private prompts, model outputs, or custom
 
 ## Supported versions
 
-Security fixes are applied to the latest `v1` release line. Pin `changliu2/assert-ai-action@v1` for compatible fixes, or pin an exact release tag for repeatability.
+Security fixes are applied to the latest `v1` release line. Pin `responsibleai/assert-ai-action@v1` for compatible fixes, or pin an exact release tag for repeatability.
 
 ## Trust model
 

@@ -34,7 +34,7 @@ git tag -f $major $version
 git push live $major --force
 
 # 3. Create the GitHub Release from the exact semver tag, not from `v1`.
-gh release create $version --repo changliu2/assert-ai-action --title "ASSERT safety regression gate $version" --notes-file release-notes.md
+gh release create $version --repo responsibleai/assert-ai-action --title "ASSERT safety regression gate $version" --notes-file release-notes.md
 ```
 
 The release workflow also moves the matching major tag when a semver tag is pushed. The explicit `git tag -f` step above is still documented so maintainers know the invariant and can repair it manually if automation is disabled or fails.
@@ -45,7 +45,7 @@ The release workflow also moves the matching major tag when a semver tag is push
 git fetch live --tags --force
 git rev-parse v1
 git rev-parse v1.0.1
-gh release view v1.0.1 --repo changliu2/assert-ai-action --json tagName,isDraft,isPrerelease,url
+gh release view v1.0.1 --repo responsibleai/assert-ai-action --json tagName,isDraft,isPrerelease,url
 ```
 
 `v1` and the latest compatible `v1.x.y` tag must resolve to the same hash. Older exact tags such as `v1.0.0` must remain on their original release commits.

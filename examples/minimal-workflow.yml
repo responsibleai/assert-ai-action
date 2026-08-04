@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - uses: changliu2/assert-ai-action@v1
+      - uses: responsibleai/assert-ai-action@v1
         with:
           # One behavior per YAML: every match becomes its own gated behavior.
           configs: eval/behaviors/*.yaml

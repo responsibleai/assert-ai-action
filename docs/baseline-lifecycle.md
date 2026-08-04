@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: changliu2/assert-ai-action@v1
+      - uses: responsibleai/assert-ai-action@v1
         with:
           configs: eval/behaviors/*.yaml
           baseline: assert-ai-baseline
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: changliu2/assert-ai-action@v1
+      - uses: responsibleai/assert-ai-action@v1
         with:
           configs: eval/behaviors/*.yaml
           baseline: assert-ai-baseline

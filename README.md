@@ -13,7 +13,7 @@ Two ways in. Both end with a working gate; pick based on whether you have Node.
 
 ```bash
 npx skills add responsibleai/ASSERT --skill run-assert-eval --yes
-npx skills add changliu2/assert-ai-action --skill wire-assert-ci --yes
+npx skills add responsibleai/assert-ai-action --skill wire-assert-ci --yes
 ```
 
 Installs `wire-assert-ci` and `run-assert-eval` for Cursor, Claude Code, GitHub Copilot, Gemini CLI, Amp, Windsurf, Codex, and [40+ other agents](https://github.com/vercel-labs/skills#supported-agents). Drop the flags for an interactive picker.
@@ -27,7 +27,7 @@ Then just say what you want:
 ### Option 2 — paste one URL (no install, no Node)
 
 ```text
-read https://raw.githubusercontent.com/changliu2/assert-ai-action/main/ONBOARD.md
+read https://raw.githubusercontent.com/responsibleai/assert-ai-action/main/ONBOARD.md
 ```
 
 Works in Copilot CLI, Claude Code, and Cursor. The agent fetches the skill files itself.
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: changliu2/assert-ai-action@v1
+      - uses: responsibleai/assert-ai-action@v1
         with:
           configs: eval/behaviors/*.yaml
           baseline: assert-ai-baseline
@@ -168,7 +168,7 @@ Baselines are normal GitHub Actions artifacts from trusted runs on the default b
 
 ## Versioning and compatibility
 
-`assert-ai-version` defaults to `0.1.0`; override it to move independently of the action. Use `changliu2/assert-ai-action@v1` for the floating major tag with compatible bug fixes, or pin an exact tag such as `@v1.0.0`.
+`assert-ai-version` defaults to `0.1.0`; override it to move independently of the action. Use `responsibleai/assert-ai-action@v1` for the floating major tag with compatible bug fixes, or pin an exact tag such as `@v1.0.0`.
 
 Release tags use semantic versions, and the floating major tag must point to the same commit as the latest compatible exact tag. See [`docs/release-procedure.md`](docs/release-procedure.md) before cutting or moving release tags.
 

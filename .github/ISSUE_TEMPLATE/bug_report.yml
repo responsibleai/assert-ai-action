@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Action version
-      description: For example, `changliu2/assert-ai-action@v1` or `@v1.0.0`.
+      description: For example, `responsibleai/assert-ai-action@v1` or `@v1.0.0`.
     validations:
       required: true
   - type: textarea

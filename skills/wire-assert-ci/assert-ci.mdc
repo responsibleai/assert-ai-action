@@ -75,7 +75,7 @@ Delegate the live run to `run-assert-eval` only after the user confirms the spec
 
 ## 5. Write the GitHub workflow
 
-Create `.github/workflows/assert-gate.yml` using only inputs in the frozen `changliu2/assert-ai-action@v1` contract. Use `configs: eval/behaviors/*.yaml`; do not use the deprecated single `config` input. Use provider secrets through `provider-env` or the back-compat Azure inputs; never write secret values. Set `extras` for the chosen rung and use `target-install` so `target.callable` imports the repo under test, including `src/` layouts.
+Create `.github/workflows/assert-gate.yml` using only inputs in the frozen `responsibleai/assert-ai-action@v1` contract. Use `configs: eval/behaviors/*.yaml`; do not use the deprecated single `config` input. Use provider secrets through `provider-env` or the back-compat Azure inputs; never write secret values. Set `extras` for the chosen rung and use `target-install` so `target.callable` imports the repo under test, including `src/` layouts.
 
 Recommended workflow body for a Rung 1 LangGraph target:
 
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - uses: changliu2/assert-ai-action@v1
+      - uses: responsibleai/assert-ai-action@v1
         with:
           configs: eval/behaviors/*.yaml
           baseline: assert-ai-baseline
