@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "wire-assert-ci": {
+      "source": "responsibleai/assert-ai-action",
+      "sourceType": "github",
+      "skillPath": "skills/wire-assert-ci/SKILL.md"
+    },
+    "run-assert-eval": {
+      "source": "responsibleai/ASSERT",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/run-assert-eval/SKILL.md"
+    }
+  }
+}

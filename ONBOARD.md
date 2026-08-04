@@ -20,6 +20,19 @@ Run them as two separate commands. `skills add` accepts only one package per
 invocation and **silently ignores extra ones while still exiting 0**, so a
 combined command looks like it worked and leaves you with half the bundle.
 
+**One command instead, if you would rather not rely on that.** This repo ships a
+[`skills-lock.json`](skills-lock.json) declaring both halves and where each comes
+from, so a single restore installs the whole bundle and cannot leave you with
+part of it:
+
+```bash
+curl -O https://raw.githubusercontent.com/responsibleai/assert-ai-action/main/skills-lock.json
+npx skills experimental_install
+```
+
+Commit that lock file and `npx skills update` afterwards keeps **both** skills
+current, including `run-assert-eval` as it changes upstream in ASSERT.
+
 **Fallback.** Only if `npx` is unavailable or the commands fail, detect the
 assistant and fetch the matching files by hand. Note the two different hosts:
 
