@@ -237,7 +237,7 @@ runs:
 
     - name: Download baseline artifact
       if: ${{ steps.resolve-baseline.outputs.needs-download == 'true' && steps.baseline-run.outputs.found == 'true' }}
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       continue-on-error: true
       with:
         name: ${{ steps.resolve-baseline.outputs.artifact-name }}
