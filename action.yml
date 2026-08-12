@@ -396,7 +396,7 @@ runs:
 
     - name: Upload assert-ai artifacts
       if: ${{ always() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: assert-ai-artifacts
         path: assert-ai-artifacts/
@@ -405,7 +405,7 @@ runs:
 
     - name: Upload gate report
       if: ${{ always() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: assert-ai-gate-report
         path: |
