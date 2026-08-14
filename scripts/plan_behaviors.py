@@ -118,15 +118,35 @@ def plan(args: argparse.Namespace) -> int:
 def _find_run_dir(
     root: Path, *, prefer: str | None = None, require_prefer_match: bool = False
 ) -> Path | None:
-    """Return the run directory holding ``scores.jsonl`` under ``root``.
+    """Return the run directory holding a complete evaluation under ``root``.
 
-    When several exist, prefer one whose path mentions ``prefer`` (the suite
-    name) so multi-behavior baselines pair with the right behavior instead of
-    silently comparing against whichever run sorted first.
+    Anchors on ``suite.json`` first because current ``assert-ai`` layouts nest
+    a per-generation subdirectory under each ``eval-<timestamp>/`` run root::
+
+        eval-XXX/                  # ← run root: suite.json, test_set.jsonl live here
+        eval-XXX/YYY/scores.jsonl  # ← per-generation subdir
+
+    An earlier version anchored on ``scores.jsonl``, which returned the inner
+    generation subdirectory. Downstream consumers then called
+    ``rglob('test_set.jsonl')`` from that inner dir and found nothing (rglob
+    only descends), which quietly disabled the paired gate: every PR reported
+    ``FirstRun`` with a "baseline is missing test_set.jsonl" warning even
+    though the baseline was present a level up.
+
+    Falls back to ``scores.jsonl`` for legacy flat layouts where scores lived
+    directly under the run root; that path is what all pre-suite.json test
+    fixtures still exercise.
+
+    When several run directories exist, prefer one whose path mentions
+    ``prefer`` (the suite name) so multi-behavior baselines pair with the
+    right behavior instead of silently comparing against whichever run
+    sorted first.
     """
     if not root or not root.exists():
         return None
-    candidates = sorted(p.parent for p in root.rglob("scores.jsonl") if p.is_file())
+    candidates = sorted(p.parent for p in root.rglob("suite.json") if p.is_file())
+    if not candidates:
+        candidates = sorted(p.parent for p in root.rglob("scores.jsonl") if p.is_file())
     if not candidates:
         return None
     if prefer:

@@ -337,3 +337,78 @@ def test_plan_then_resolve_then_compare_runs_end_to_end(tmp_path, monkeypatch) -
     assert report["decision"] == "PASS"
     body = (tmp_path / "pr_comment.md").read_text(encoding="utf-8")
     assert "| Behavior | Dimension |" in body
+
+
+def _write_nested_run(directory: Path, generation: str = "20260814T095043") -> None:
+    """Write a current-layout run tree: eval-XXX/ has test_set.jsonl and suite.json;
+    the per-generation subdir eval-XXX/YYY/ has scores.jsonl.
+
+    Reproduces the layout produced by recent `assert-ai` versions and
+    exercises the code path that anchors on `suite.json` at the outer level.
+    """
+    inner = directory / generation
+    inner.mkdir(parents=True, exist_ok=True)
+    (directory / "suite.json").write_text("{}\n", encoding="utf-8")
+    (directory / "test_set.jsonl").write_text(
+        '{"test_case_id": "case-0", "prompt": "..."}\n', encoding="utf-8"
+    )
+    (inner / "scores.jsonl").write_text(
+        '{"test_case_id": "case-0", "verdict": {"dimensions": {"policy_violation": false}}}\n',
+        encoding="utf-8",
+    )
+    (inner / "config.yaml").write_text("run: baseline\n", encoding="utf-8")
+
+
+def test_resolve_returns_outer_run_dir_for_nested_layouts(tmp_path, monkeypatch) -> None:
+    """Regression: `test_set.jsonl` lives at the eval-<ts>/ level, but
+    `scores.jsonl` lives one level down. Anchoring `_find_run_dir` on
+    `scores.jsonl` returned the inner dir and silently disabled the paired
+    gate — `detect_test_set_drift.py` `rglob`d from the inner dir and never
+    found `test_set.jsonl`, so every PR reported FirstRun. Anchor on
+    `suite.json` (which lives at the outer level) instead.
+    """
+    monkeypatch.chdir(tmp_path)
+    _write_config(tmp_path / "eval" / "behaviors" / "leakage.yaml", "bank-leakage", "leakage")
+    plan_behaviors.main(
+        [
+            "plan",
+            "--configs",
+            "eval/behaviors/*.yaml",
+            "--artifacts-root",
+            str(tmp_path / "arts"),
+            "--out",
+            "manifest.json",
+        ]
+    )
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    current_root = Path(manifest[0]["artifacts_root"]) / "results" / "eval-20260814T100915"
+    baseline_root = tmp_path / "base" / "results" / "eval-20260814T095043"
+    _write_nested_run(current_root, generation="20260814T100915")
+    _write_nested_run(baseline_root, generation="20260814T095043")
+
+    rc = plan_behaviors.main(
+        [
+            "resolve",
+            "--manifest",
+            "manifest.json",
+            "--baseline-root",
+            str(tmp_path / "base"),
+            "--out",
+            "comparable.json",
+            "--all-out",
+            "resolved.json",
+        ]
+    )
+    assert rc == 0
+    resolved = json.loads((tmp_path / "resolved.json").read_text(encoding="utf-8"))
+    assert len(resolved) == 1
+    entry = resolved[0]
+    # The critical property: the resolved paths must point at the OUTER
+    # eval-<ts>/ dir where suite.json lives, not the inner generation dir,
+    # so downstream rglob can still find test_set.jsonl.
+    for role in ("current", "baseline"):
+        assert (Path(entry[role]) / "test_set.jsonl").is_file(), (
+            f"{role} run root {entry[role]!r} is missing test_set.jsonl -- "
+            f"_find_run_dir picked the inner generation dir instead of the outer eval dir"
+        )
+        assert (Path(entry[role]) / "suite.json").is_file()
