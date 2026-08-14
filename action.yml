@@ -107,6 +107,17 @@ inputs:
       Inconclusive. The job still passes in both cases -- see docs/verdicts.md.
     required: false
     default: 'true'
+  run-timeout-minutes:
+    description: >-
+      Wall-clock cap on the eval-execution step, in minutes. Prevents a
+      hung tester model, rate-limit backoff spiral, or stuck OTel exporter
+      from burning the runner budget. The cap covers the `Run assert-ai`
+      step only -- install, baseline lookup, gate decision, and PR-comment
+      steps are naturally short and stay untimed. Default 90 fits ~5
+      behaviors × 40 pairs × 8 turns on gpt-5.4-mini-class models; tune
+      upward for larger suites or slower models.
+    required: false
+    default: '90'
 
 outputs:
   gate-verdict:
@@ -281,16 +292,39 @@ runs:
 
     - name: Run assert-ai
       shell: bash
+      env:
+        RUN_TIMEOUT_MINUTES: ${{ inputs.run-timeout-minutes }}
+      # Composite-action steps do not accept `timeout-minutes` (parser
+      # rejects it as an unexpected key), so we wrap the eval loop with
+      # coreutils `timeout` and translate the SIGTERM exit code into a
+      # clear log line before failing.
       run: |
         set -euo pipefail
         python -c "import json;[print(e['frozen']) for e in json.load(open('assert-ai-behaviors.json',encoding='utf-8'))]" > .assert-ai-frozen-list
-        while IFS= read -r frozen; do
-          frozen="${frozen%$'\r'}"
-          if [ -z "$frozen" ]; then continue; fi
-          echo "::group::assert-ai run --config $frozen"
-          assert-ai run --config "$frozen"
-          echo "::endgroup::"
-        done < .assert-ai-frozen-list
+        set +e
+        timeout "${RUN_TIMEOUT_MINUTES}m" bash <<'INNER'
+          set -euo pipefail
+          while IFS= read -r frozen; do
+            frozen="${frozen%$'\r'}"
+            if [ -z "$frozen" ]; then continue; fi
+            echo "::group::assert-ai run --config $frozen"
+            assert-ai run --config "$frozen"
+            echo "::endgroup::"
+          done < .assert-ai-frozen-list
+        INNER
+        status=$?
+        set -euo pipefail
+        # `timeout` returns 124 on hard timeout; also handle 137 (SIGKILL
+        # after grace period) and 143 (SIGTERM) in case of variants.
+        case "$status" in
+          124|137|143)
+            echo "::error::assert-ai run exceeded run-timeout-minutes (${RUN_TIMEOUT_MINUTES}m); partial artifacts uploaded for inspection"
+            exit 124
+            ;;
+          *)
+            exit "$status"
+            ;;
+        esac
 
     - name: Locate runs
       id: locate
