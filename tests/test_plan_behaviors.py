@@ -412,3 +412,75 @@ def test_resolve_returns_outer_run_dir_for_nested_layouts(tmp_path, monkeypatch)
             f"_find_run_dir picked the inner generation dir instead of the outer eval dir"
         )
         assert (Path(entry[role]) / "suite.json").is_file()
+
+
+def test_plan_pins_suite_to_slug_when_config_omits_it(tmp_path, monkeypatch) -> None:
+    """Regression: when a behavior config has no `suite:`, `assert-ai` defaults
+    `suite_id` to `eval-<timestamp>` and every dispatch writes into a fresh
+    `results/<eval-XXX>/`. The cache lookup never crosses dispatches, so the
+    paired McNemar gate re-generates the test_set every run and drift always
+    fires. Pin `suite` to the behavior slug so consecutive runs share one
+    `results/<slug>/` and the artifact cache can actually reuse the frozen
+    test_set from the baseline dispatch.
+    """
+    monkeypatch.chdir(tmp_path)
+    # No `suite:` in this fixture; matches the shape of banking/foundry demos.
+    (tmp_path / "eval" / "behaviors").mkdir(parents=True)
+    (tmp_path / "eval" / "behaviors" / "leakage.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "behavior": {"name": "leakage", "description": "..."},
+                "pipeline": {"inference": {"target": {"callable": "agent:chat"}}},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    rc = plan_behaviors.main(
+        [
+            "plan",
+            "--configs",
+            "eval/behaviors/*.yaml",
+            "--artifacts-root",
+            str(tmp_path / "arts"),
+            "--out",
+            "manifest.json",
+        ]
+    )
+    assert rc == 0
+
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest[0]["suite"] == manifest[0]["slug"]
+
+    frozen = yaml.safe_load(Path(manifest[0]["frozen"]).read_text(encoding="utf-8"))
+    assert frozen["suite"] == manifest[0]["slug"], (
+        "the frozen config must carry the pinned suite so `assert-ai run` picks "
+        "it up as its suite_id instead of defaulting to eval-<timestamp>"
+    )
+
+
+def test_plan_preserves_user_supplied_suite(tmp_path, monkeypatch) -> None:
+    """A user who already set `suite:` in their config keeps their own layout;
+    we only default to the slug when the field is unset.
+    """
+    monkeypatch.chdir(tmp_path)
+    _write_config(tmp_path / "eval" / "behaviors" / "leakage.yaml", "custom-suite-id", "leakage")
+
+    rc = plan_behaviors.main(
+        [
+            "plan",
+            "--configs",
+            "eval/behaviors/*.yaml",
+            "--artifacts-root",
+            str(tmp_path / "arts"),
+            "--out",
+            "manifest.json",
+        ]
+    )
+    assert rc == 0
+
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest[0]["suite"] == "custom-suite-id"
+    frozen = yaml.safe_load(Path(manifest[0]["frozen"]).read_text(encoding="utf-8"))
+    assert frozen["suite"] == "custom-suite-id"
