@@ -107,6 +107,17 @@ inputs:
       Inconclusive. The job still passes in both cases -- see docs/verdicts.md.
     required: false
     default: 'true'
+  run-timeout-minutes:
+    description: >-
+      Wall-clock cap on the eval-execution step, in minutes. Prevents a
+      hung tester model, rate-limit backoff spiral, or stuck OTel exporter
+      from burning the runner budget. The cap covers the `Run assert-ai`
+      step only -- install, baseline lookup, gate decision, and PR-comment
+      steps are naturally short and stay untimed. Default 90 fits ~5
+      behaviors × 40 pairs × 8 turns on gpt-5.4-mini-class models; tune
+      upward for larger suites or slower models.
+    required: false
+    default: '90'
 
 outputs:
   gate-verdict:
@@ -281,6 +292,10 @@ runs:
 
     - name: Run assert-ai
       shell: bash
+      # `timeout-minutes` on a composite step accepts a number expression;
+      # `fromJSON` converts the string input into that number so the caller
+      # can pass a plain string like '120'.
+      timeout-minutes: ${{ fromJSON(inputs.run-timeout-minutes) }}
       run: |
         set -euo pipefail
         python -c "import json;[print(e['frozen']) for e in json.load(open('assert-ai-behaviors.json',encoding='utf-8'))]" > .assert-ai-frozen-list
