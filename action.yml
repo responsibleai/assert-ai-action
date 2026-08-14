@@ -56,9 +56,26 @@ inputs:
     required: false
     default: ''
   assert-ai-version:
-    description: 'Version of assert-ai to install from PyPI.'
+    description: 'Version of assert-ai to install from PyPI. Ignored when `assert-ai-ref` is set.'
     required: false
     default: '0.1.0'
+  assert-ai-ref:
+    description: >-
+      Install assert-ai from the ASSERT git repo at this ref (a commit SHA or a
+      release tag) instead of PyPI. Overrides `assert-ai-version`. Use for
+      pre-release validation, forks, or unblocking a known PyPI bug before a
+      new release cuts. Paired McNemar requires an identical harness build
+      between the baseline run and each PR run, so pin a SHA or tag — never a
+      moving branch name like `main`, which would let commits drift between
+      runs and manufacture false regressions.
+    required: false
+    default: ''
+  assert-ai-repo:
+    description: >-
+      Override the git URL used with `assert-ai-ref` (for forks or private
+      testing). Ignored when `assert-ai-ref` is empty.
+    required: false
+    default: 'https://github.com/responsibleai/ASSERT.git'
   extras:
     description: "Comma-separated assert-ai extras to install from PyPI (for example: 'regression,otel,langgraph')."
     required: false
@@ -148,14 +165,28 @@ runs:
       env:
         ASSERT_AI_EXTRAS: ${{ inputs.extras }}
         ASSERT_AI_VERSION: ${{ inputs.assert-ai-version }}
+        ASSERT_AI_REF: ${{ inputs.assert-ai-ref }}
+        ASSERT_AI_REPO: ${{ inputs.assert-ai-repo }}
       run: |
         python -m pip install --upgrade pip
         python -m pip install PyYAML
-        if [ -n "$ASSERT_AI_EXTRAS" ]; then
-          python -m pip install "assert-ai[${ASSERT_AI_EXTRAS}]==${ASSERT_AI_VERSION}"
+        if [ -n "$ASSERT_AI_REF" ]; then
+          # Git install: overrides `assert-ai-version`. The ref must be a SHA
+          # or tag (see input description); pip resolves dependencies from the
+          # `pyproject.toml` at that ref, which is how a caller can pick up a
+          # constraint fix that hasn't shipped to PyPI yet.
+          if [ -n "$ASSERT_AI_EXTRAS" ]; then
+            spec="assert-ai[${ASSERT_AI_EXTRAS}] @ git+${ASSERT_AI_REPO}@${ASSERT_AI_REF}"
+          else
+            spec="assert-ai @ git+${ASSERT_AI_REPO}@${ASSERT_AI_REF}"
+          fi
+          echo "Installing assert-ai from ${ASSERT_AI_REPO}@${ASSERT_AI_REF}"
+        elif [ -n "$ASSERT_AI_EXTRAS" ]; then
+          spec="assert-ai[${ASSERT_AI_EXTRAS}]==${ASSERT_AI_VERSION}"
         else
-          python -m pip install "assert-ai==${ASSERT_AI_VERSION}"
+          spec="assert-ai==${ASSERT_AI_VERSION}"
         fi
+        python -m pip install "$spec"
 
     - name: Resolve config input
       id: configs
