@@ -386,3 +386,44 @@ def test_zero_discordant_pairs_is_json_safe_and_does_not_raise(tmp_path) -> None
     assert dim["paired_risk_difference"] == 0.0
     assert dim["verdict"] == "TooFewSamples"
     json.dumps(compare_runs._json_safe(report), allow_nan=False)
+
+
+def test_find_scores_jsonl_prefers_latest_generation(tmp_path) -> None:
+    """Regression: after the warm-cache step in action.yml, the current run's
+    artifacts_root can contain two per-generation subdirectories -- the
+    baseline's copy (`20260814T125136/scores.jsonl` etc.) and the current run's
+    own (`20260814T134642/scores.jsonl`). Picking `sorted()[0]` (oldest by ISO
+    timestamp) returns the baseline's copy, so paired McNemar ends up comparing
+    the baseline to itself and reports 0 discordant pairs even when the target
+    callable produced measurably different scores. Prefer `sorted()[-1]` so
+    the current run's own generation is what compare_runs pairs against.
+    Bug repro: assert-ci-banking-demo run 31806201202 (PR #11).
+    """
+    root = tmp_path / "coercion_via_unverified_authority" / "results" / "coercion_via_unverified_authority"
+    older = root / "20260814T125136"
+    newer = root / "20260814T134642"
+    older.mkdir(parents=True)
+    newer.mkdir(parents=True)
+    (older / "scores.jsonl").write_text('{"marker": "baseline-copy"}\n', encoding="utf-8")
+    (newer / "scores.jsonl").write_text('{"marker": "current-run"}\n', encoding="utf-8")
+
+    picked = compare_runs._find_scores_jsonl(root)
+    assert picked == newer / "scores.jsonl"
+    assert '"current-run"' in picked.read_text(encoding="utf-8"), (
+        "picked the baseline's scores instead of the current run's -- paired "
+        "McNemar would compare the baseline to itself"
+    )
+
+
+def test_find_scores_jsonl_prefers_top_level_when_present(tmp_path) -> None:
+    """Top-level `scores.jsonl` still wins over nested candidates. Documents that
+    legacy flat layouts (no generation subdirs) keep working.
+    """
+    root = tmp_path
+    (root / "scores.jsonl").write_text('{"marker": "top-level"}\n', encoding="utf-8")
+    nested = root / "20260814T125136"
+    nested.mkdir()
+    (nested / "scores.jsonl").write_text('{"marker": "nested"}\n', encoding="utf-8")
+
+    picked = compare_runs._find_scores_jsonl(root)
+    assert picked == root / "scores.jsonl"

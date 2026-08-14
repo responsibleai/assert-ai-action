@@ -145,7 +145,11 @@ def _find_scores_jsonl(root: Path) -> Path:
 
     Accepts either the run directory itself (``scores.jsonl`` at the top level)
     or a parent directory containing one or more run subdirectories. If multiple
-    candidates exist, the lexicographically first one is used and reported.
+    candidates exist, the lexicographically LAST one is used because ``assert-
+    ai`` names per-generation subdirectories with an ISO-8601 timestamp
+    (``YYYYMMDDTHHMMSS``) that sorts chronologically -- picking the newest is
+    correct even when a warm-cache step copied the baseline's own generation
+    output into the current run's tree.
     """
     if (root / "scores.jsonl").is_file():
         return root / "scores.jsonl"
@@ -154,9 +158,9 @@ def _find_scores_jsonl(root: Path) -> Path:
         raise FileNotFoundError(f"no scores.jsonl under {root}")
     if len(candidates) > 1:
         sys.stderr.write(
-            f"[compare_runs] multiple scores.jsonl under {root}; using {candidates[0]}\n"
+            f"[compare_runs] multiple scores.jsonl under {root}; using latest {candidates[-1]}\n"
         )
-    return candidates[0]
+    return candidates[-1]
 
 
 def _verdict_for(

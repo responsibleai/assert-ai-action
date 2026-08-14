@@ -21,8 +21,13 @@ def _find_file(root: Path, name: str) -> Path | None:
     direct = root / name
     if direct.is_file():
         return direct
+    # Prefer the lexicographically LAST match: assert-ai names per-generation
+    # subdirectories with an ISO-8601 timestamp (`YYYYMMDDTHHMMSS`) so sorting
+    # by name is chronological. When the warm-cache step has copied the
+    # baseline's per-generation output into the current run's tree, the newer
+    # dir is the one produced by *this* run and is what we want.
     matches = sorted(p for p in root.rglob(name) if p.is_file())
-    return matches[0] if matches else None
+    return matches[-1] if matches else None
 
 
 def _current_stats(root: Path) -> tuple[int, float]:

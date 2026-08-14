@@ -353,11 +353,29 @@ runs:
       run: |
         python <<'PY'
         import json
+        import re
         import shutil
         from pathlib import Path
 
         behaviors = json.loads(Path("assert-ai-behaviors.json").read_text(encoding="utf-8"))
         baseline_root = Path("assert-ai-baseline").resolve()
+
+        # Skip per-generation output subdirectories when copying the baseline.
+        # `assert-ai` writes each run's own inference_set.jsonl / scores.jsonl
+        # into `results/<suite>/<YYYYMMDDTHHMMSS>/`, which is the *baseline's*
+        # historical output, not something the cache needs. If we copy it in,
+        # the current run's `_find_scores_jsonl` sees two candidates (baseline's
+        # older dir and the current run's newer dir) and downstream compare_runs
+        # can't tell which set is "current" -- observed on
+        # responsibleai/assert-ci-banking-demo run 31806201202 where PR#11's
+        # paired McNemar compared the baseline's scores against itself and
+        # produced 0 discordant pairs / WARN.
+        # The stage cache proper lives at `results/<suite>/artifacts/<stage>/
+        # <version>/` and is copied normally.
+        _GEN_DIR_RE = re.compile(r"^\d{8}T\d{6}$")
+
+        def _skip_generation_dirs(directory, names):
+            return [n for n in names if _GEN_DIR_RE.match(n)]
 
         for b in behaviors:
             src = baseline_root / b["slug"]
@@ -368,8 +386,8 @@ runs:
             dst.mkdir(parents=True, exist_ok=True)
             # dirs_exist_ok=True lets Python 3.11+ merge trees; any files the
             # baseline doesn't cover fall through to the fresh run's own writes.
-            shutil.copytree(src, dst, dirs_exist_ok=True)
-            print(f"[warm-cache] seeded {b['slug']} from baseline")
+            shutil.copytree(src, dst, dirs_exist_ok=True, ignore=_skip_generation_dirs)
+            print(f"[warm-cache] seeded {b['slug']} from baseline (excluding baseline's per-generation output dirs)")
         PY
 
     - name: Export provider credentials
