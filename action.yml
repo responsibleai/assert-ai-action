@@ -52,7 +52,21 @@ inputs:
     required: false
     default: ''
   baseline-branch:
-    description: 'Branch whose successful runs hold the trusted baseline artifact. Defaults to the repository default branch.'
+    description: >-
+      Branch whose successful runs hold the trusted baseline artifact. When
+      empty, the effective branch is inferred from the triggering event:
+
+      - `pull_request` / `pull_request_target`: `github.base_ref` (the branch
+        the PR targets). Fixes multi-release-branch repos where a PR into
+        `release/x` should compare against `release/x`'s baseline, not the
+        default branch's.
+      - `push` / `workflow_dispatch`: `github.ref_name` (the current branch).
+        Lets a `workflow_dispatch` on a feature branch upload a baseline and
+        have a subsequent dispatch on the same branch find it, so the workflow
+        can be end-to-end validated before merging.
+      - `schedule`: the repository default branch.
+
+      An explicit value always wins over the inferred default.
     required: false
     default: ''
   assert-ai-version:
@@ -223,6 +237,41 @@ runs:
           echo "needs-download=true" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Resolve baseline branch
+      id: resolve-branch
+      if: ${{ steps.resolve-baseline.outputs.needs-download == 'true' }}
+      shell: bash
+      env:
+        OVERRIDE: ${{ inputs.baseline-branch }}
+        EVENT_NAME: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+        REF_NAME: ${{ github.ref_name }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        set -euo pipefail
+        if [ -n "$OVERRIDE" ]; then
+          branch="$OVERRIDE"
+          reason="explicit \`baseline-branch\` input"
+        elif [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "pull_request_target" ]; then
+          branch="$BASE_REF"
+          reason="\`github.base_ref\` (pull request target)"
+        elif [ "$EVENT_NAME" = "schedule" ]; then
+          branch="$DEFAULT_BRANCH"
+          reason="repository default branch (schedule event)"
+        else
+          branch="$REF_NAME"
+          reason="\`github.ref_name\` (current branch on ${EVENT_NAME})"
+        fi
+        if [ -z "$branch" ]; then
+          # Defensive: if base_ref is empty on a PR event (unusual, but seen
+          # on some fork PRs), fall back to the default branch so we still
+          # make a lookup attempt instead of erroring on empty --branch.
+          branch="$DEFAULT_BRANCH"
+          reason="repository default branch (fallback)"
+        fi
+        echo "Resolved baseline-branch: ${branch} (${reason})"
+        echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+
     - name: Find the baseline run
       id: baseline-run
       if: ${{ steps.resolve-baseline.outputs.needs-download == 'true' }}
@@ -233,7 +282,7 @@ runs:
       run: |
         python "${{ github.action_path }}/scripts/find_baseline_run.py" \
           --artifact-name "${{ steps.resolve-baseline.outputs.artifact-name }}" \
-          --branch "${{ inputs.baseline-branch != '' && inputs.baseline-branch || github.event.repository.default_branch }}"
+          --branch "${{ steps.resolve-branch.outputs.branch }}"
 
     - name: Download baseline artifact
       if: ${{ steps.resolve-baseline.outputs.needs-download == 'true' && steps.baseline-run.outputs.found == 'true' }}
