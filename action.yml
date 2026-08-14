@@ -336,6 +336,42 @@ runs:
         run-id: ${{ steps.baseline-run.outputs.run-id }}
         github-token: ${{ github.token }}
 
+    - name: Warm the artifact cache from the baseline
+      # `assert-ai run` has a fingerprint-based artifact cache under each
+      # behavior's `artifacts_root`. `actions/checkout` starts every job with
+      # an empty workspace, so the cache is cold and the test_set stage
+      # regenerates on every dispatch even when nothing changed. The paired
+      # McNemar gate cannot reach PASS until the current run's cache is
+      # seeded with the baseline artifacts. Copy each behavior's baseline
+      # tree into its `artifacts_root` here; `assert-ai run` then hydrates
+      # its context from the baseline's `latest.json`, reuses the frozen
+      # test_set (identical fingerprint), and only re-runs downstream stages
+      # whose fingerprints actually changed (a target-code change on a real
+      # PR still misses the inference cache and scores fresh, as intended).
+      if: ${{ steps.resolve-baseline.outputs.needs-download == 'true' && steps.baseline-run.outputs.found == 'true' }}
+      shell: bash
+      run: |
+        python <<'PY'
+        import json
+        import shutil
+        from pathlib import Path
+
+        behaviors = json.loads(Path("assert-ai-behaviors.json").read_text(encoding="utf-8"))
+        baseline_root = Path("assert-ai-baseline").resolve()
+
+        for b in behaviors:
+            src = baseline_root / b["slug"]
+            dst = Path(b["artifacts_root"])
+            if not src.exists():
+                print(f"[warm-cache] no baseline dir for {b['slug']}, skipping")
+                continue
+            dst.mkdir(parents=True, exist_ok=True)
+            # dirs_exist_ok=True lets Python 3.11+ merge trees; any files the
+            # baseline doesn't cover fall through to the fresh run's own writes.
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+            print(f"[warm-cache] seeded {b['slug']} from baseline")
+        PY
+
     - name: Export provider credentials
       shell: bash
       env:

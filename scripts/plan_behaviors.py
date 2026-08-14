@@ -92,6 +92,20 @@ def plan(args: argparse.Namespace) -> int:
 
         artifacts_root = artifacts_base / slug
         cfg["artifacts_root"] = str(artifacts_root)
+        # Pin the suite_id so every dispatch of the same behavior writes into
+        # the same `results/<suite>/` directory. Without this, `assert-ai`
+        # defaults `suite_id` to `eval-<current-timestamp>` on every run, so
+        # the previous run's cached test_set / inference / judge artifacts
+        # live at a path the current run never looks at. The paired McNemar
+        # gate then re-generates the test_set from scratch, the drift
+        # detector correctly reports `TestSetChanged`, and no-code-change PRs
+        # can never reach PASS.
+        #
+        # Respect a user-supplied `suite:` when present so anyone already
+        # relying on their own suite naming keeps that layout; only default
+        # to the slug when the config left it unset.
+        suite = cfg.get("suite") or slug
+        cfg["suite"] = suite
 
         frozen = frozen_dir / f"{slug}.yaml"
         with frozen.open("w", encoding="utf-8") as fh:
@@ -101,7 +115,7 @@ def plan(args: argparse.Namespace) -> int:
             {
                 "name": name,
                 "slug": slug,
-                "suite": cfg.get("suite"),
+                "suite": suite,
                 "config": str(config_path).replace(os.sep, "/"),
                 "frozen": str(frozen).replace(os.sep, "/"),
                 "artifacts_root": str(artifacts_root).replace(os.sep, "/"),
