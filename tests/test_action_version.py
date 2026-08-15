@@ -41,6 +41,7 @@ def test_both_report_writers_agree() -> None:
 
     assert load("compare_runs").ACTION_VERSION == expected
     assert load("detect_test_set_drift").ACTION_VERSION == expected
+    assert load("write_firstrun_report").ACTION_VERSION == expected
 
 
 def test_version_matches_the_newest_release_tag() -> None:
@@ -70,6 +71,6 @@ def test_version_matches_the_newest_release_tag() -> None:
 
 def test_the_stamp_actually_reaches_a_gate_report() -> None:
     """A constant nothing writes out would pass every check above and still be useless."""
-    source = (ROOT / "scripts" / "compare_runs.py").read_text(encoding="utf-8")
-
-    assert '"action_version": ACTION_VERSION' in source
+    for name in ("compare_runs", "write_firstrun_report"):
+        source = (ROOT / "scripts" / f"{name}.py").read_text(encoding="utf-8")
+        assert '"action_version": ACTION_VERSION' in source, name
