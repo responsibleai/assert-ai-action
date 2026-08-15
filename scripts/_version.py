@@ -10,4 +10,4 @@ Bump this when cutting a release; docs/release-procedure.md says so, and
 tests/test_action_version.py fails if the two consumers ever disagree again.
 """
 
-ACTION_VERSION = "v1.0.3"
+ACTION_VERSION = "v1.0.4"
