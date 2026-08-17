@@ -11,6 +11,8 @@ Two ways in. Both end with a working gate; pick based on whether you have Node.
 
 ### Option 1 — install the skills (recommended, 40+ agents)
 
+Requires Node.js ≥ 22 (the `skills` CLI uses `node:util`'s `styleText`, added in Node 22). On Node 18/20 you'll see `SyntaxError: The requested module 'node:util' does not provide an export named 'styleText'` — use [Option 2](#option-2--paste-one-url-no-install-no-node) instead, or upgrade Node.
+
 ```bash
 npx skills add responsibleai/ASSERT --skill run-assert-eval --yes
 npx skills add responsibleai/assert-ai-action --skill wire-assert-ci --yes
