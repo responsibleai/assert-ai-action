@@ -71,6 +71,26 @@ Sample-size guidance is part of the gate design:
 
 Delegate config generation to `run-assert-eval` by invoking the installed `run-assert-eval` skill/prompt/rule and asking it to use `assert-ai init` for each behavior YAML. Do not hand-write pipeline internals unless you are only applying the route wrapper chosen above.
 
+### Model selection
+
+Available models are user-specific: Azure OpenAI deployment names vary per resource, and OpenAI/Anthropic/other providers vary per account. Do not guess or silently default. Before generating any behavior YAML, ask the user for the deployed models they can use, then write those exact values into every file.
+
+Ask for three roles in one prompt — the user may answer with one, two, or three distinct models:
+
+1. **Judge model** — rates each conversation against the rubric. Judge fidelity dominates gate quality; steer the user toward their strongest available reasoning model (for example, a full GPT-5-class deployment).
+2. **Tester (user-simulator) model** — drives the customer side of multi-turn conversations for Rung 1/2 behaviors. Latency and cost matter more than reasoning depth; a mini/small deployment is usually fine. If the behavior is single-turn, leave `pipeline.inference.tester` unset and tell the user.
+3. **Default model** — used by `pipeline.systematize` (behavior taxonomy) and `pipeline.test_set` (prompt/scenario generation). Cheap/small is fine; correctness of intermediate reasoning is not the gate.
+
+Use LiteLLM-style names as they appear in the user's environment (e.g. `azure/<deployment-name>`, `openai/gpt-5.4`, `anthropic/claude-4-sonnet`). When the user gives an Azure deployment name, verify the corresponding provider secrets (`AZURE_API_KEY`, `AZURE_API_BASE`, `AZURE_API_VERSION`) are already listed in `provider-env`; if not, add them. Never inline API keys.
+
+Write the answers into every behavior YAML explicitly:
+
+- `default_model.name: <default answer>`
+- `pipeline.inference.tester.model.name: <tester answer>` (omit the block if single-turn)
+- `pipeline.judge.model.name: <judge answer>`
+
+Do not leave `pipeline.judge.model` unset; letting the judge fall back to `default_model` silently downgrades it to a small model and the gate becomes unreliable. Do not write `tester: null` unless the user confirmed the behavior is single-turn.
+
 ## 4. Run the live baseline
 
 Delegate the live run to `run-assert-eval` only after the user confirms the spec and cost. Let it own pipeline execution and result reporting. Capture only the suite/run identifiers from `artifacts/results/<suite>/<run>/` needed for ACS and CI setup. Do not commit generated artifacts.
@@ -114,7 +134,7 @@ jobs:
           guard-dimensions: overrefusal
           alpha: '0.05'
           min-pairs: '30'
-          assert-ai-version: '0.1.0'
+          assert-ai-version: '<LATEST_STABLE_AT_AUTHORING_TIME>'  # resolve once at workflow creation, then pin; see "assert-ai version pin" below
           extras: regression,otel,langgraph
           target-install: python -m pip install -e .
           provider-env: |
@@ -146,6 +166,21 @@ assert-ai acs validate --manifest artifacts/acs/<suite>/manifest.yaml --suite <s
 ```
 
 Review `artifacts/acs/<suite>/report.md`, the manifest, and generated policy. Propose the code/prompt/policy fixes and ask for confirmation before applying them. After confirmation, create a branch named `assert/acs-<suite>`, apply the fixes, and open a PR. When opening the PR, state: because this branch uses `gate-mode: improvement`, the gate passes only on a statistically significant `policy_violation` gain with no `overrefusal` regression; a change that merely trends better fails.
+
+## assert-ai version pin
+
+At workflow-authoring time — not at every CI run — resolve the latest stable `assert-ai` release from PyPI and write that exact version into `assert-ai-version`. Pinning is required because the paired-binary McNemar test compares a baseline artifact against later PR runs, and any change in the test-set generator, tester, or judge behavior between versions would show up as a false regression.
+
+Use the first working command:
+
+```bash
+curl -fsSL https://pypi.org/pypi/assert-ai/json | python -c "import sys,json;info=json.load(sys.stdin)['info'];print(info['version'])"
+# fallback: pip index versions assert-ai | head -1 | awk '{print $2}' | tr -d '()'
+```
+
+Substitute the resolved version for `<LATEST_STABLE_AT_AUTHORING_TIME>` in the workflow above. Tell the user what version was written and that they own subsequent bumps: re-baseline after any `assert-ai-version` change so the next PR run compares like against like.
+
+Do not write `assert-ai-version: latest` or omit the input — the action's default is a fixed older version, and floating installs would break paired comparisons.
 
 ## Guardrails
 
